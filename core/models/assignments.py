@@ -19,6 +19,14 @@ class AssignmentStateEnum(str, enum.Enum):
     SUBMITTED = 'SUBMITTED'
     GRADED = 'GRADED'
 
+class VerifyGrades:
+
+    def is_gradeEnum(obj):
+        try:
+            GradeEnum(obj)
+        except ValueError:
+            return False
+        return True
 
 class Assignment(db.Model):
     __tablename__ = 'assignments'
@@ -60,6 +68,19 @@ class Assignment(db.Model):
         return assignment
 
     @classmethod
+    def updateGrade(cls, _id, grade:str, principal: Principal):
+        assignment = Assignment.get_by_id(_id)
+        
+        assertions.assert_found(assignment, 'No assignment with this id was found')
+        assertions.assert_valid(assignment.state == AssignmentStateEnum.SUBMITTED, 'only a submitted assignment can be graded')
+        assertions.assert_valid(assignment.teacher_id == principal.teacher_id, 'This assignment belongs to some other teacher')
+        assertions.assert_valid(VerifyGrades.is_gradeEnum(grade), "API should not allow only grades available in enum")
+
+        assignment.grade = grade
+        assignment.state = AssignmentStateEnum.GRADED
+        return assignment
+
+    @classmethod
     def submit(cls, _id, teacher_id, principal: Principal):
         assignment = Assignment.get_by_id(_id)
         assertions.assert_found(assignment, 'No assignment with this id was found')
@@ -77,3 +98,8 @@ class Assignment(db.Model):
     @classmethod
     def get_assignments_by_student(cls, student_id):
         return cls.filter(cls.student_id == student_id).all()
+
+
+    @classmethod
+    def get_assignments_by_teacher(cls, teacher_id):
+        return cls.filter(cls.teacher_id == teacher_id).all()
